@@ -1,0 +1,25 @@
+/* 
+   neonInvaders
+   
+   By Fer Ysunza, 01/02/24. 
+*/
+
+:root {
+    --background-color: #000;
+    --player-color: #0f0;
+    --enemy-color: #f00;
+    --bullet-color: #ff0;
+}
+
+body, html {
+    height: 100%;
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: var(--background-color);
+}
+
+canvas {
+    background: var(--background-color);
+}
