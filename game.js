@@ -14,13 +14,14 @@ let player = {
     y: canvas.height - 60,
     width: 30,
     height: 30,
-    color: '#0f0'
+    color: '#00ffff' // Neon cyan
 };
 
 let bullets = [];
 let enemies = [];
 const bulletVelocity = 5;
 const enemyVelocity = 1;
+let keys = {};
 
 function drawPlayer() {
     ctx.fillStyle = player.color;
@@ -29,12 +30,10 @@ function drawPlayer() {
 
 function drawBullets() {
     bullets.forEach(bullet => {
-        ctx.fillStyle = '#ff0';
+        ctx.fillStyle = '#fffc00'; // Bright yellow
         ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
         bullet.y -= bulletVelocity;
     });
-
-    // Remove bullets that move off-screen
     bullets = bullets.filter(bullet => bullet.y + bullet.height > 0);
 }
 
@@ -45,7 +44,7 @@ function createEnemies() {
             y: 30,
             width: 40,
             height: 40,
-            color: '#f00'
+            color: '#ff00ff' // Neon pink
         });
     }
 }
@@ -60,14 +59,39 @@ function drawEnemies() {
 
 function gameLoop() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    handleKeyboardInput();
     drawPlayer();
     drawBullets();
     drawEnemies();
     requestAnimationFrame(gameLoop);
 }
 
-createEnemies();
-gameLoop();
+function handleKeyboardInput() {
+    if (keys['ArrowLeft']) { player.x -= 5; }
+    if (keys['ArrowRight']) { player.x += 5; }
+    if (keys['Space']) { shootBullet(); }
+    player.x = Math.max(0, Math.min(canvas.width - player.width, player.x));
+}
+
+window.addEventListener('keydown', function(e) {
+    keys[e.key] = true;
+});
+
+window.addEventListener('keyup', function(e) {
+    keys[e.key] = false;
+});
+
+function shootBullet() {
+    if (!bullets.some(b => b.y <= canvas.height && b.y >= 0)) {
+        bullets.push({
+            x: player.x + player.width / 2 - 5,
+            y: player.y,
+            width: 10,
+            height: 20,
+            color: '#fffc00' // Bright yellow
+        });
+    }
+}
 
 canvas.addEventListener('touchmove', function(e) {
     let touchX = e.touches[0].clientX;
@@ -75,10 +99,8 @@ canvas.addEventListener('touchmove', function(e) {
 }, { passive: false });
 
 canvas.addEventListener('touchstart', function() {
-    bullets.push({
-        x: player.x + player.width / 2 - 5,
-        y: player.y,
-        width: 10,
-        height: 20
-    });
+    shootBullet();
 });
+
+createEnemies();
+gameLoop();

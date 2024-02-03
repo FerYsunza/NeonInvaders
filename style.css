@@ -5,10 +5,10 @@
 */
 
 :root {
-    --background-color: #000;
-    --player-color: #0f0;
-    --enemy-color: #f00;
-    --bullet-color: #ff0;
+    --background-color: #121212; /* Dark background */
+    --player-color: #00ffff; /* Neon cyan */
+    --enemy-color: #ff00ff; /* Neon pink */
+    --bullet-color: #fffc00; /* Bright yellow */
 }
 
 body, html {
@@ -18,8 +18,10 @@ body, html {
     justify-content: center;
     align-items: center;
     background-color: var(--background-color);
+    font-family: 'Press Start 2P', cursive; /* Retro font */
 }
 
 canvas {
     background: var(--background-color);
+    box-shadow: 0 0 15px var(--player-color); /* Neon glow effect */
 }
