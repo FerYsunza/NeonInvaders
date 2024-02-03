@@ -7,148 +7,70 @@
 document.addEventListener('DOMContentLoaded', () => {
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
+    const startButton = document.getElementById('startButton');
+    const startButtonContainer = document.getElementById('startButtonContainer');
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 
-    let player = {
-        x: canvas.width / 2 - 15,
-        y: canvas.height - 60,
-        width: 30,
-        height: 30,
-        color: '#00ffff', // Neon cyan
-    };
-
+    let gameActive = false;
+    let audioContext;
+    let player = { x: canvas.width / 2 - 15, y: canvas.height - 60, width: 30, height: 30, color: '#00ffff' };
     let bullets = [];
     let enemies = [];
     const bulletVelocity = 5;
     const enemyVelocity = 1;
     let keys = {};
     let score = 0;
-    const shootInterval = 333; // Auto shoot roughly three times per second
-
-    let audioContext;
+    const enemySpawnInterval = 20000; // New enemy wave every 20 seconds
 
     function userInteracted() {
-        // Initialize or resume AudioContext on user interaction
         if (!audioContext) {
             audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            createEnemies();
-            gameLoop();
-        } else if (audioContext.state === 'suspended') {
-            audioContext.resume();
         }
+        audioContext.resume();
     }
 
     function createOscillator(freq, type, duration, decay) {
-        if (!audioContext) return; // Ensure audioContext is initialized
-
+        if (!audioContext) return;
         const oscillator = audioContext.createOscillator();
         const gainNode = audioContext.createGain();
-
         oscillator.type = type;
         oscillator.frequency.setValueAtTime(freq, audioContext.currentTime);
-
         gainNode.gain.setValueAtTime(1, audioContext.currentTime);
         gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + duration);
-
         oscillator.connect(gainNode);
         gainNode.connect(audioContext.destination);
-
         oscillator.start();
         oscillator.stop(audioContext.currentTime + decay);
     }
 
-    function playShootSound() {
-        createOscillator(400, 'square', 0.1, 0.1);
-    }
-
-    function playEnemyHitSound() {
-        createOscillator(150, 'triangle', 0.2, 0.2);
-    }
-
-    function playEnemyReachPlayerSound() {
-        createOscillator(100, 'sawtooth', 0.5, 0.5);
-    }
-
-    setInterval(() => {
-        if (bullets.length < 3 && audioContext) {
-            autoShoot();
-        }
-    }, shootInterval);
+    function playShootSound() { createOscillator(400, 'square', 0.1, 0.1); }
+    function playEnemyHitSound() { createOscillator(150, 'triangle', 0.2, 0.2); }
+    function playEnemyReachPlayerSound() { createOscillator(100, 'sawtooth', 0.5, 0.5); }
 
     function autoShoot() {
-        bullets.push({
-            x: player.x + player.width / 2 - 5,
-            y: player.y,
-            width: 10,
-            height: 20,
-            color: '#fffc00',
-        });
-        playShootSound();
+        if (gameActive && bullets.length < 3) {
+            bullets.push({ x: player.x + player.width / 2 - 5, y: player.y, width: 10, height: 20, color: '#fffc00' });
+            playShootSound();
+        }
     }
 
-    function drawBullets() {
-        bullets = bullets.filter((bullet, index) => {
-            bullet.y -= bulletVelocity;
-            if (bullet.y + bullet.height < 0) {
-                return false;
-            }
-
-            ctx.fillStyle = bullet.color;
-            ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
-
-            for (let i = 0; i < enemies.length; i++) {
-                let enemy = enemies[i];
-                if (bullet.x < enemy.x + enemy.width &&
-                    bullet.x + bullet.width > enemy.x &&
-                    bullet.y < enemy.y + enemy.height &&
-                    bullet.y + bullet.height > enemy.y) {
-                    enemies.splice(i, 1);
-                    score += 10;
-                    playEnemyHitSound();
-                    return false;
-                }
-            }
-
-            return true;
-        });
-    }
+    setInterval(autoShoot, 333); // Auto shoot three times per second
 
     function createEnemies() {
-        if (enemies.length === 0) {
+        if (gameActive && enemies.length === 0) {
             for (let i = 0; i < 5; i++) {
-                enemies.push({
-                    x: i * 60 + 20,
-                    y: 30,
-                    width: 40,
-                    height: 40,
-                    color: '#ff00ff',
-                });
+                enemies.push({ x: i * 60 + 20, y: 30, width: 40, height: 40, color: '#ff00ff' });
             }
         }
     }
 
-    function drawEnemies() {
-        enemies.forEach(enemy => {
-            ctx.fillStyle = enemy.color;
-            ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
-            enemy.y += enemyVelocity;
-
-            if (enemy.y > canvas.height - player.height) {
-                playEnemyReachPlayerSound();
-                // Implement game over or damage to player here
-            }
-        });
-    }
-
-    function gameLoop() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        handleKeyboardInput();
-        drawPlayer();
-        drawBullets();
-        drawEnemies();
-        displayScore();
-        requestAnimationFrame(gameLoop);
+    function startGame() {
+        gameActive = true;
+        startButtonContainer.style.display = 'none';
+        userInteracted();
+        createEnemies();
+        gameLoop();
     }
 
     function drawPlayer() {
@@ -156,31 +78,45 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.fillRect(player.x, player.y, player.width, player.height);
     }
 
-    function handleKeyboardInput() {
-        if (keys['ArrowLeft']) { player.x -= 5; }
-        if (keys['ArrowRight']) { player.x += 5; }
-        player.x = Math.max(0, Math.min(canvas.width - player.width, player.x));
+    function drawBullets() {
+        bullets = bullets.filter(bullet => {
+            bullet.y -= bulletVelocity;
+            ctx.fillStyle = bullet.color;
+            ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
+            return bullet.y + bullet.height > 0;
+        });
     }
 
-    window.addEventListener('keydown', (e) => {
-        keys[e.key] = true;
-        userInteracted();
-        if (e.key === ' ') e.preventDefault();
-    });
+    function drawEnemies() {
+        enemies.forEach((enemy, index) => {
+            ctx.fillStyle = enemy.color;
+            ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
+            enemy.y += enemyVelocity;
 
-    window.addEventListener('keyup', (e) => {
-        keys[e.key] = false;
-    });
+            if (enemy.y > canvas.height - player.height) {
+                playEnemyReachPlayerSound();
+                enemies.splice(index, 1);
+            }
+        });
+    }
 
-    canvas.addEventListener('touchmove', (e) => {
-        e.preventDefault();
-        userInteracted();
-        let touchX = e.touches[0].clientX;
-        player.x = touchX - (player.width / 2);
-    }, { passive: false });
+    function checkCollisions() {
+        bullets.forEach((bullet, bulletIndex) => {
+            enemies.forEach((enemy, enemyIndex) => {
+                if (bullet.x < enemy.x + enemy.width && bullet.x + bullet.width > enemy.x &&
+                    bullet.y < enemy.y + enemy.height && bullet.y + bullet.height > enemy.y) {
+                    playEnemyHitSound();
+                    score += 10;
+                    enemies.splice(enemyIndex, 1);
+                    bullets.splice(bulletIndex, 1);
+                }
+            });
+        });
 
-    canvas.addEventListener('click', userInteracted);
-    canvas.addEventListener('touchstart', userInteracted);
+        if (enemies.length === 0) {
+            setTimeout(createEnemies, 3000); // Wait 3 seconds before spawning a new wave
+        }
+    }
 
     function displayScore() {
         ctx.font = '16px "Press Start 2P"';
@@ -188,4 +124,42 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.textAlign = 'right';
         ctx.fillText(`Score: ${score}`, canvas.width - 20, 30);
     }
+
+    function gameLoop() {
+        if (!gameActive) return;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawPlayer();
+        drawBullets();
+        drawEnemies();
+        checkCollisions();
+        displayScore();
+        requestAnimationFrame(gameLoop);
+    }
+
+    window.addEventListener('keydown', e => {
+        keys[e.key] = true;
+        if (e.key === ' ') e.preventDefault(); // Prevent scrolling with spacebar
+    });
+
+    window.addEventListener('keyup', e => {
+        keys[e.key] = false;
+    });
+
+    canvas.addEventListener('touchmove', e => {
+        e.preventDefault(); // Prevent scrolling on mobile
+        let touchX = e.touches[0].clientX;
+        player.x = touchX - (player.width / 2);
+    }, { passive: false });
+
+    function handleKeyboardInput() {
+        if (keys['ArrowLeft']) player.x -= 5;
+        if (keys['ArrowRight']) player.x += 5;
+        player.x = Math.max(0, Math.min(canvas.width - player.width, player.x));
+    }
+
+    setInterval(() => {
+        handleKeyboardInput();
+    }, 10);
+
+    startButton.addEventListener('click', startGame);
 });
