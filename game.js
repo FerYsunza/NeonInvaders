@@ -14,7 +14,7 @@ let player = {
     y: canvas.height - 60,
     width: 30,
     height: 30,
-    color: '#00ffff' // Neon cyan
+    color: '#00ffff', // Neon cyan
 };
 
 let bullets = [];
@@ -23,15 +23,17 @@ const bulletVelocity = 5;
 const enemyVelocity = 1;
 let keys = {};
 let score = 0;
-const shootInterval = 1000; // Auto shoot every 1000 milliseconds
+const shootInterval = 333; // Auto shoot roughly three times per second
 
 function drawPlayer() {
     ctx.fillStyle = player.color;
     ctx.fillRect(player.x, player.y, player.width, player.height);
 }
 
+setInterval(autoShoot, shootInterval);
+
 function autoShoot() {
-    if (bullets.length < 1) { // Allows more than one bullet on screen
+    if (bullets.length < 3) { // Adjust for continuous firing without overcrowding the screen
         bullets.push({
             x: player.x + player.width / 2 - 5,
             y: player.y,
@@ -42,30 +44,31 @@ function autoShoot() {
     }
 }
 
-setInterval(autoShoot, shootInterval);
-
 function drawBullets() {
-    bullets.forEach((bullet, index) => {
+    bullets = bullets.filter((bullet, index) => {
+        bullet.y -= bulletVelocity;
+        if (bullet.y + bullet.height < 0) {
+            return false; // Remove bullet if it's off the screen
+        }
+
         ctx.fillStyle = bullet.color;
         ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
-        bullet.y -= bulletVelocity;
-
-        // Check for collision with enemy
-        enemies.forEach((enemy, enemyIndex) => {
+        
+        // Check collision with enemies
+        for (let i = 0; i < enemies.length; i++) {
+            let enemy = enemies[i];
             if (bullet.x < enemy.x + enemy.width &&
                 bullet.x + bullet.width > enemy.x &&
                 bullet.y < enemy.y + enemy.height &&
                 bullet.y + bullet.height > enemy.y) {
-                // Remove enemy and bullet
-                enemies.splice(enemyIndex, 1);
-                bullets.splice(index, 1);
+                enemies.splice(i, 1); // Remove the enemy
                 score += 10; // Increase score
+                return false; // Remove the bullet
             }
-        });
-    });
+        }
 
-    // Remove bullets that move off-screen
-    bullets = bullets.filter(bullet => bullet.y + bullet.height > 0);
+        return true; // Keep the bullet if it didn't hit anything
+    });
 }
 
 function createEnemies() {
@@ -83,16 +86,12 @@ function createEnemies() {
 }
 
 function drawEnemies() {
-    enemies.forEach((enemy, index) => {
+    enemies.forEach(enemy => {
         ctx.fillStyle = enemy.color;
         ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
         enemy.y += enemyVelocity;
 
-        // Remove enemy if it moves beyond the player/bottom of the screen
-        if (enemy.y > canvas.height - player.height) {
-            enemies.splice(index, 1);
-            // Game could end here, or you could subtract from player's lives
-        }
+        // Game over condition could be implemented here
     });
 }
 
@@ -102,7 +101,7 @@ function gameLoop() {
     drawPlayer();
     drawBullets();
     drawEnemies();
-    createEnemies(); // Check and create enemies if needed
+    createEnemies();
     displayScore();
     requestAnimationFrame(gameLoop);
 }
